@@ -14,7 +14,7 @@ import { SettingsPanel } from "@/components/settings-panel"
 import { StoreMapPage } from "@/components/pages/store-map-page"
 import { WarRoomPage } from "@/components/pages/war-room-page"
 import { ForecastingPage } from "@/components/pages/forecasting-page"
-import { ChatbotTest } from "@/components/chatbot-test"
+import { WebhookTest } from "@/components/webhook-test"
 
 export default function Dashboard() {
   const [activeView, setActiveView] = useState("overview")
@@ -42,7 +42,7 @@ export default function Dashboard() {
           <div className="space-y-6">
             <KPIBar />
             <SettingsPanel />
-            <ChatbotTest />
+            <WebhookTest />
           </div>
         )
       default:

@@ -2,8 +2,8 @@
 
 export const config = {
   api: {
-    // Chatbot API endpoint
-    baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://n8n-oayd.onrender.com/webhook/prompt',
+    // n8n Webhook base URL - endpoints will be appended
+    baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://n8n-oayd.onrender.com/webhook',
     timeout: 15000, // Reduced timeout for faster fallbacks on static sites
     retryAttempts: 1, // Fewer retries for static deployment
     retryDelay: 1000,

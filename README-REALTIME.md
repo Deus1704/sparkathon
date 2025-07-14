@@ -1,12 +1,12 @@
-# Chatbot API Integration Guide
+# n8n Webhook API Integration Guide
 
-This guide explains how to set up real-time data integration using your n8n chatbot endpoint for the SmartRetail Twin Dashboard.
+This guide explains how to set up real-time data integration using your n8n webhook endpoints for the SmartRetail Twin Dashboard.
 
 ## Overview
 
-The dashboard has been updated to work with your chatbot API using a **single comprehensive request** to reduce API load. It includes:
+The dashboard has been updated to work with **multiple dedicated n8n webhook endpoints** for optimal performance. It includes:
 
-- ✅ **Single comprehensive request** to reduce API load
+- ✅ **Multiple dedicated endpoints** for specific data types
 - ✅ **30-second caching** to minimize repeated requests
 - ✅ **Real-time data hooks** with automatic polling
 - ✅ **Error handling** and fallback to cached data
@@ -17,83 +17,113 @@ The dashboard has been updated to work with your chatbot API using a **single co
 
 ## Quick Setup
 
-### 1. Activate Your n8n Webhook
+### 1. Activate Your n8n Webhooks
 
-Your chatbot endpoint: `https://n8n-oayd.onrender.com/webhook/prompt`
+Your webhook endpoints:
+- **Health:** `https://n8n-oayd.onrender.com/webhook/health`
+- **Dashboard:** `https://n8n-oayd.onrender.com/webhook/dashboard`
+- **KPIs:** `https://n8n-oayd.onrender.com/webhook/kpis`
+- **Stores:** `https://n8n-oayd.onrender.com/webhook/stores`
+- **Forecast:** `https://n8n-oayd.onrender.com/webhook/forecast`
+- **Actions:** `https://n8n-oayd.onrender.com/webhook/actions`
+- **Equipment:** `https://n8n-oayd.onrender.com/webhook/equipment`
+- **Trucks:** `https://n8n-oayd.onrender.com/webhook/trucks`
 
-**Important**: Make sure your n8n workflow is active or in test mode. The webhook needs to be running to receive requests.
+**Important**: Make sure your n8n workflows are active or in test mode. The webhooks need to be running to receive requests.
 
 ### 2. Test the Integration
 
 1. Start the dashboard: `npm run dev`
 2. Go to **Settings** page in the sidebar
-3. Use the **Chatbot API Test** component to verify connection
-4. Try the quick test buttons or enter custom prompts
+3. Use the **API Test** component to verify connections
+4. Try the health check and individual endpoint tests
 
 ### 3. Request Format
 
-The dashboard sends POST requests to your chatbot with this format:
+The dashboard sends POST requests to each webhook with this format:
 
 ```json
 {
-  "prompt": "Your question about retail data...",
-  "format": "json",
-  "context": "smartretail_dashboard"
+  "context": "smartretail_dashboard",
+  "timestamp": "2024-01-15T10:30:00Z"
 }
 ```
 
 ### 4. Response Handling
 
-Since your endpoint returns **plain strings**, the dashboard:
-- ✅ **Parses JSON** from string responses automatically
-- ✅ **Handles multiple formats** (plain JSON, markdown code blocks, mixed text)
-- ✅ **Extracts arrays/objects** using regex patterns
-- ✅ **Validates schemas** before using data in UI
-- ✅ **Falls back gracefully** if parsing fails
+Each webhook endpoint returns **structured JSON responses** in ApiResponse format:
 
-### 4. Expected Data Types
+```json
+{
+  "data": [...], // Endpoint-specific data
+  "success": true,
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
 
-Your chatbot should be able to provide data for:
+The dashboard:
+- ✅ **Validates response structure** before using data in UI
+- ✅ **Handles errors gracefully** with fallback data
+- ✅ **Caches successful responses** for 30 seconds
+- ✅ **Retries failed requests** with exponential backoff
 
-**KPI Metrics:**
+### 5. Expected Data Types
+
+Each webhook should provide specific data:
+
+**Health Endpoint (`/webhook/health`):**
+- System status monitoring
+- API connectivity verification
+
+**KPIs Endpoint (`/webhook/kpis`):**
 - SKUs in danger zone (count and percentage)
 - Fill rate vs forecast
 - Urgent alerts count
 - Average restock lead time
 - Forecast confidence
 
-**Store Data:**
+**Stores Endpoint (`/webhook/stores`):**
 - Store locations and status
 - Inventory levels by category
 - Weather impacts
 - Manager information
 
-**Forecasting:**
+**Forecast Endpoint (`/webhook/forecast`):**
 - Sales predictions by category
 - Weather impact on sales
 - Special events affecting demand
 
-**Critical Actions:**
+**Actions Endpoint (`/webhook/actions`):**
 - Restock recommendations
 - Equipment maintenance alerts
 - Demand spikes requiring response
+
+**Equipment Endpoint (`/webhook/equipment`):**
+- Equipment health and status
+- Maintenance schedules
+- Operational metrics
+
+**Trucks Endpoint (`/webhook/trucks`):**
+- Delivery tracking
+- ETA predictions
+- Route optimization
 
 ## Features Implemented
 
 ### Real-Time Components Updated
 
-- ✅ **KPI Bar** - Shows live metrics with refresh controls
-- ✅ **Store Map** - Real-time store status and inventory
-- 🔄 **Forecasting** - Timeline and category forecasts (next)
-- 🔄 **War Room** - Critical actions and alerts (next)
-- 🔄 **Maintenance** - Equipment and logistics data (next)
+- ✅ **KPI Bar** - Shows live metrics via `/webhook/kpis`
+- ✅ **Store Map** - Real-time store status via `/webhook/stores`
+- ✅ **Forecasting** - Timeline and category forecasts via `/webhook/forecast`
+- ✅ **War Room** - Critical actions via `/webhook/actions`
+- ✅ **Maintenance** - Equipment and logistics via `/webhook/equipment` & `/webhook/trucks`
 
 ### Error Handling
 
-- **Graceful degradation**: Shows cached/fallback data when API is unavailable
+- **Graceful degradation**: Shows cached/fallback data when APIs are unavailable
 - **Retry logic**: Automatic retries with exponential backoff
 - **User feedback**: Clear error messages and loading states
-- **Health monitoring**: Connection status in header
+- **Health monitoring**: Connection status via `/webhook/health`
 
 ### Configuration Options
 
@@ -118,41 +148,71 @@ export const config = {
 }
 ```
 
-## String Response Parsing
+## Webhook Response Formats
 
-Since your chatbot returns **plain strings**, the dashboard includes robust JSON parsing:
+Each n8n webhook should return responses in the standard ApiResponse format:
 
-### 📝 **Single Comprehensive Prompt:**
+### 🔄 **Standard Response Format:**
 
-Instead of multiple requests, the dashboard now sends **one comprehensive request** that asks for all data:
+All endpoints should return data in this structure:
 
-```
-"Based on product catalogue (Cricket bat: 70%, Water Bottle: 40%, Umbrella: 80%)
-and Bangalore trending topics, provide complete dashboard data as JSON:
-
+```json
 {
-  "kpis": [{"title": "SKUs in Danger Zone", "value": "1", "type": "ring"}],
-  "stores": [{"id": "1", "name": "Store #001 - Koramangala", "status": "good"}],
-  "forecastData": [{"day": "Mon", "sports": 85, "weather": "sunny"}],
-  "criticalActions": [{"id": 1, "title": "Restock Water Bottles"}],
-  "equipment": [{"id": 1, "name": "Cooler Unit A1", "status": "good"}],
-  "trucks": [{"id": 1, "route": "Bangalore-Koramangala", "eta": "2:30 PM"}]
-}"
+  "data": [endpoint-specific-data],
+  "success": true,
+  "timestamp": "2024-01-15T10:30:00Z"
+}
 ```
 
-### 🔄 **Request Optimization:**
-- ✅ **Single API call** instead of 6+ separate requests
-- ✅ **30-second caching** prevents repeated requests
-- ✅ **Automatic cache clearing** on manual refresh
-- ✅ **Fallback data** if comprehensive request fails
-
-### 🔧 **Automatic Parsing:**
-The dashboard handles various response formats:
+### 🔧 **Error Response Format:**
+```json
+{
+  "data": null,
+  "success": false,
+  "message": "Error description",
+  "timestamp": "2024-01-15T10:30:00Z"
+}
 ```
-✅ Plain JSON: [{"title": "KPIs", "value": "123"}]
-✅ With text: "Here are the KPIs: [{"title": "KPIs", "value": "123"}]"
-✅ Code blocks: ```json [{"title": "KPIs"}] ```
-✅ Mixed format: "Analysis shows [{"data": "value"}] based on trends"
+
+### 📊 **Example Responses:**
+
+**KPIs Endpoint:**
+```json
+{
+  "data": [
+    {
+      "title": "SKUs in Danger Zone",
+      "value": "1",
+      "total": "3",
+      "percentage": 33,
+      "type": "ring",
+      "color": "text-red-600",
+      "bgColor": "bg-red-50"
+    }
+  ],
+  "success": true,
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
+
+**Stores Endpoint:**
+```json
+{
+  "data": [
+    {
+      "id": "1",
+      "name": "Store #001 - Koramangala",
+      "type": "dark",
+      "status": "warning",
+      "demand": 78,
+      "stock": 45,
+      "lat": 12.9352,
+      "lng": 77.6245
+    }
+  ],
+  "success": true,
+  "timestamp": "2024-01-15T10:30:00Z"
+}
 ```
 
 ## Testing
@@ -198,18 +258,23 @@ json-server --watch mock-data.json --port 3001
 ### Common Issues
 
 **"API Error" badge showing:**
-- Check if your API is running
-- Verify the API URL in `.env.local`
-- Check browser console for CORS errors
+- Check if your n8n workflows are active
+- Verify the webhook URLs are correctly configured
+- Check browser console for CORS or network errors
 
 **Data not updating:**
-- Verify API endpoints return correct format
-- Check refresh intervals in config
+- Verify webhook endpoints return correct JSON format
+- Check individual endpoint responses in browser network tab
 - Look for JavaScript errors in console
 
+**Specific endpoint failures:**
+- Test individual webhooks using tools like Postman
+- Check n8n workflow logs for errors
+- Ensure Google Sheets data is accessible
+
 **CORS errors:**
-- Add CORS headers to your API
-- For development, you can disable CORS in your API
+- Add CORS headers to your n8n webhook responses
+- For development, you can disable CORS in browser
 
 ### Debug Mode
 
@@ -219,7 +284,23 @@ Enable debug logging:
 NEXT_PUBLIC_ENABLE_DEBUG=true
 ```
 
-This will log API requests and responses to the browser console.
+This will log all webhook requests and responses to the browser console.
+
+### Testing Individual Endpoints
+
+Test each webhook endpoint directly:
+
+```bash
+# Health check
+curl -X POST https://n8n-oayd.onrender.com/webhook/health \
+  -H "Content-Type: application/json" \
+  -d '{"context": "smartretail_dashboard", "timestamp": "2024-01-15T10:30:00Z"}'
+
+# KPIs
+curl -X POST https://n8n-oayd.onrender.com/webhook/kpis \
+  -H "Content-Type: application/json" \
+  -d '{"context": "smartretail_dashboard", "timestamp": "2024-01-15T10:30:00Z"}'
+```
 
 ---
 
@@ -533,9 +614,60 @@ interface Equipment {
 
 ---
 
+### **5. GET /api/trucks - Truck Logistics Data**
 
+**Request:**
+```http
+GET /api/trucks
+```
 
+**Response Schema:**
+```typescript
+interface TrucksResponse {
+  data: Truck[]
+  success: boolean
+  timestamp: string
+}
 
+interface Truck {
+  id: number
+  driver: string
+  route: string
+  status: "en route" | "delivered" | "pending"
+  eta: string                    // Estimated time of arrival
+  cargo: CargoDetail[]
+}
+
+interface CargoDetail {
+  item: string
+  quantity: number
+  status: "loaded" | "unloaded" | "in transit"
+}
+```
+
+**Example Response:**
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "driver": "John Doe",
+      "route": "Warehouse A to Store #001",
+      "status": "en route",
+      "eta": "2024-01-15T12:30:00Z",
+      "cargo": [
+        {
+          "item": "Water Bottles",
+          "quantity": 100,
+          "status": "loaded"
+        }
+      ]
+    }
+  ],
+  "success": true,
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
 
 ---
 
@@ -566,3 +698,23 @@ If you need help:
 2. Review the TypeScript interfaces in `lib/types.ts`
 3. Look at the example data structures in the fallback data
 4. Test with the mock server setup above
+
+## 🛠️ **Current Status**
+
+✅ **Implemented:** Multiple dedicated webhook endpoints  
+✅ **Working:** All components with real-time updates via specific endpoints  
+✅ **Active:** KPI Bar, Store Map, Forecasting, War Room, Maintenance components  
+📊 **Data:** Google Sheets + AI agents recommended for each n8n workflow
+
+## 📋 **Webhook Endpoint Summary**
+
+| Component | Endpoint | Purpose | Refresh Rate |
+|-----------|----------|---------|--------------|
+| Health Monitor | `/webhook/health` | System status | 10 minutes |
+| KPI Bar | `/webhook/kpis` | Key metrics | 3 minutes |
+| Store Map | `/webhook/stores` | Store status | 5 minutes |
+| Forecasting | `/webhook/forecast` | Sales predictions | 10 minutes |
+| War Room | `/webhook/actions` | Critical actions | 2 minutes |
+| Equipment | `/webhook/equipment` | Maintenance status | 5 minutes |
+| Logistics | `/webhook/trucks` | Truck tracking | 2 minutes |
+| Dashboard | `/webhook/dashboard` | Complete data | 5 minutes |
